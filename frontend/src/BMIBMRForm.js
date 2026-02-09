@@ -53,7 +53,7 @@ function BMIBMRForm() {
     const bmrStatus = getBMRStatus(bmr);
 
     try {
-      const response = await axios.post("http://api.localhost/api/bmi-records/", {
+      const response = await axios.post("/api/bmi-records/", {
         height: h,
         weight: w,
         age: a,

@@ -1,0 +1,49 @@
+name: CI/CD Pipeline
+on:
+  push:
+    branches: ["master"]
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Kind create cluster
+        run: |
+          kind create cluster --name bmi-cluster --config kind-config
+
+      - name: Install ingress-nginx
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+      
+      - name: Check pod
+        run: |
+          kubectl get pods -n ingress-nginx
+      
+      - name: Build image
+        run: |
+          docker build -t bmi-app-backend:latest ./backend
+          docker build -t bmi-app-frontend:latest ./frontend
+      
+      - name: Load image
+        run: |
+          kind load docker-image bmi-app-backend:latest --name bmi-cluster
+          kind load docker-image bmi-app-frontend:latest --name bmi-cluster
+
+      - name: Apply k8s
+        run: |
+          kubectl apply -f k8s/
+
+      - name: wait for postgres
+        run: |
+          kubectl wait --for=condition=Ready pod -l app=postgres --timeout=120s
+
+      - name: wait for backend
+        run: |
+          kubectl rollout status deploy/backend-deployment --timeout=120s
+
+      - name: Migrate
+        run: |
+          kubectl exec $(kubectl get pod -l app=backend -o jsonpath='{.items[0].metadata.name}') -c backend -- python manage.py migrate

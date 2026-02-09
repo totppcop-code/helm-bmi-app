@@ -44,3 +44,16 @@ coverage/
 *.crt
 id_rsa*
 *rsa*
+.credentials
+.runner
+.path
+_work/
+bin/
+config.sh
+env.sh
+externals/
+run-helper*
+run.sh
+safe_sleep.sh
+svc.sh
+actions-runner-linux-x64-*.tar.gz
