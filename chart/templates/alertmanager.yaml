@@ -1,0 +1,28 @@
+{{- if .Values.component.alertmanager.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.alertmanager) }}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.alertmanager) | nindent 4 }}
+data:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: {{ .Values.component.alertmanager.resolve_timeout | quote }}
+    route:
+      group_by: ["alertname"]
+      receiver: "slack-notification"
+      routes:
+      - match:
+          severity: {{ .Values.component.alertmanager.severity | quote }}
+        receiver: "pagerduty"
+    receivers:
+    - name: "slack-notification"
+      slack_configs:
+      - channel: "#alert"
+        send_resolve: true
+        api_url:  {{ .Values.component.alertmanager.slack_api_url | quote }}
+    - name: "pagerduty"
+      pagerduty_configs:
+      - routing_key: {{ .Values.component.alertmanager.routing_key | quote }}  
+{{- end }}

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.backend ) }}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.backend ) | nindent 4 }}
+spec:
+  replicas: {{ .Values.component.backend.replicas }}
+  selector:
+    matchLabels:
+      {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.backend ) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{ include "component.selectorLabels" ( dict "Release" .Release "Values" .Values.component.backend ) | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.backend )}}
+          image: "{{ .Values.component.backend.image.repository }}:{{ .Values.component.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.component.backend.image.pullPolicy  }}
+          ports:
+            - containerPort: {{ .Values.component.backend.service.port }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-configmap
+            - secretRef:
+                name: {{ .Release.Name }}-secret
+          startupProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.component.backend.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.component.backend.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.component.backend.service.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 10
+          resources:
+            requests:
+              cpu: {{ .Values.component.backend.resources.requests.cpu }}
+              memory: {{ .Values.component.backend.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.component.backend.resources.limits.cpu }}
+              memory: {{ .Values.component.backend.resources.limits.memory }}

@@ -1,0 +1,88 @@
+{{- if .Values.component.postgres.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.postgres)}}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.postgres) | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.postgres) }}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.postgres) | nindent 4 }}
+spec:
+  replicas: {{ .Values.component.postgres.replicaCount }}
+  selector:
+    matchLabels:
+      {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.postgres) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.postgres) | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.postgres) }}
+          image: "{{ .Values.component.postgres.image.repository }}:{{ .Values.component.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.component.postgres.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.component.postgres.service.port }}
+          envFrom:
+          - secretRef:
+              name: {{ .Release.Name }}-secret
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.component.postgres.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.component.postgres.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.component.postgres.service.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 10
+          resources:
+            requests:
+              cpu: {{ .Values.component.postgres.resources.requests.cpu | quote }}
+              memory: {{ .Values.component.postgres.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.component.postgres.resources.limits.cpu | quote }}
+              memory: {{ .Values.component.postgres.resources.limits.memory | quote }}
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.postgres) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.postgres) }}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.postgres) | nindent 4 }}
+spec:
+  type: {{ .Values.component.postgres.service.type }}
+  selector:
+    {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.postgres) | nindent 4 }}
+  ports:
+    - name: postgres
+      port: {{ .Values.component.postgres.service.port }}
+      targetPort: {{ .Values.component.postgres.service.port }}
+{{- end }}

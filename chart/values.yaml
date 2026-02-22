@@ -1,0 +1,292 @@
+component:
+  backend:
+    name: backend
+    replicas: 2
+    image:
+      repository: bmi-app-backend
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+      port: 8000
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu:  "1000m"
+        memory: "1Gi"
+    serviceMonitor:
+      enabled: true
+
+  frontend:
+    name: frontend
+    replicas: 2
+    image:
+      repository: bmi-app-frontend
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+      port: 80
+    resources:
+      requests:
+        cpu: "125m"
+        memory: "250Mi"
+      limits:
+        cpu:  "750m"
+        memory: "1Gi"  
+    serviceMonitor:
+      enabled: true
+
+  ingressEnable: true
+  ingress:
+    name: ingress
+    tls:
+    - hosts: 
+        - bmi.local
+      secretName: bmi-local-tls-secret
+    rules:
+    - host: bmi.local
+    
+   
+
+  postgres:
+    enabled: true
+    name: postgres
+    replicas: 2
+    image: 
+      repository: postgres
+      tag: "15"
+      pullPolicy: IfNotPresent
+    service:
+      port: 5432
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+
+  rbacEnabled: true
+  rbac:
+    backend:
+      enabled: true
+      name: backend
+      serviceAccount:
+        name: backend-sa
+      rules:
+        - apiGroups: [""]
+          resources: ["deployments", "services", "pods"]
+          verbs: ["get", "list", "create", "update", "patch", "delete"]
+    frontend:
+      enabled: true
+      name: frontend
+      serviceAccount:
+        name: frontend-sa
+      rules:
+        - apiGroups: [""]
+          resources: ["deployments", "services", "pods"]
+          verbs: ["get", "list", "create", "update", "patch", "delete"]
+    postgres:
+      enabled: true
+      name: postgres
+      serviceAccount:
+        name: postgres-sa
+      rules:
+        - apiGroups: [""]
+          resources: ["deployments", "services", "pods"]
+          verbs: ["get", "list", "create", "update", "patch", "delete"]
+    prometheus:
+      enabled: true
+      name: prometheus
+      serviceAccount:
+        name: prometheus-sa
+      rules:
+        - apiGroups: [""]
+          resources: ["nodes", "nodes/metrics", "services", "endpoints", "pods"]
+          verbs: ["get", "list", "watch"]
+    grafana:
+      enabled: true
+      name: grafana
+      serviceAccount:
+        name: grafana-sa
+      rules:
+        - apiGroups: [""]
+          resources: ["configmaps", "secrets"]
+          verbs: ["get", "list"]
+    alertmanager:
+      enabled: true
+      name: alertmanager
+      serviceAccount:
+        name: alertmanager-sa
+      rules:
+        - apiGroups: [""]
+          resources: ["configmaps"]
+          verbs: ["get"]
+
+  networkPolicyEnabled: true         
+  networkPolicy:
+    backend:
+      enabled: true
+      name: backend
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+        ports:
+        - protocol: TCP
+          port: 8000
+      egress:
+      - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+        ports:
+        - protocol: TCP
+          port: 5432
+    frontend:
+      enabled: true
+      name: frontend
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels:
+              app: ingress
+        ports:
+        - protocol: TCP
+          port: 80
+      egress:
+      - to:
+        - podSelector:
+            matchLabels:
+              app: backend
+        ports:
+        - protocol: TCP
+          port: 8000
+    ingress:
+      enabled: true
+      name: ingress
+      ingress:
+      - from: []
+        ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+      egress:
+      - to:
+        - podSelector:
+            matchLabels:
+              app: backend
+        ports:
+        - protocol: TCP
+          port: 8000
+      - to:
+        - podSelector:
+            matchLabels:
+              app: frontend
+        ports:
+        - protocol: TCP
+          port: 80
+    postgres:
+      enabled: true
+      name: postgres
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+        ports:
+        - protocol: TCP
+          port: 5432
+    prometheus:
+      enabled: true
+      name: prometheus
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels:
+              app: grafana
+        ports:
+        - protocol: TCP
+          port: 9090
+      egress:
+      - to:
+        - podSelector:
+            matchLabels:
+              app: backend
+        - podSelector:
+            matchLabels:
+              app: frontend
+        ports:
+        - protocol: TCP
+          port: 8000
+        - protocol: TCP
+          port: 9100
+    grafana:
+      enabled: true
+      name: grafana
+      egress:
+      - to:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+        ports:
+        - protocol: TCP
+          port: 9090
+    alertmanager:
+      enabled: true
+      name: alertmanager
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+        ports:
+        - protocol: TCP
+          port: 9093
+
+
+     
+  prometheusRule:
+    enabled: true
+    name: prometheusrule
+    alert: HighCPUUsage
+    expr: |
+          sum by(pod)(rate(container_cpu_usage_seconds_total{namespace="dev",container!=""}[5m])) /
+          sum by(pod)(kube_pod_container_resource_limits{namespace="dev", resource="cpu"}) > 0.8
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "CPU 使用率過高 持續2分鐘"
+      description: "CPU 使用率超過80% 持續2分鐘"
+
+  alertmanager:
+    enabled: true
+    name: alertmanager
+    resolve_timeout: 5m
+    routes:
+      severity: critical
+    api_url: "https://hooks.slack.com/services/xxxx"
+    routing_key: "your-pagerduty-key"
+
+  grafana:
+    enabled: true
+    name: grafana
+    replicas: 2
+    image: 
+      repository: grafana/grafana
+      tag: "9.5.2"
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+      port: 3000
+
+  configMap:
+    name: configmap
+    APP_ENV: "dev"
+    APP_DEBUG: false

@@ -1,0 +1,19 @@
+{{- if .Values.component.backend.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.backend) }}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.backend) | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.backend) | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+{{- end }}

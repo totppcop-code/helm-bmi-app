@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.frontend )}}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.frontend) | nindent 4 }}
+spec:
+  replicas: {{ .Values.component.frontend.replicas }}
+  selector:
+    matchLabels:
+      {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.frontend) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.frontend) | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.frontend) }}
+          image: "{{ .Values.component.frontend.image.repository }}:{{ .Values.component.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.component.frontend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.component.frontend.service.port }}
+          startupProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.component.frontend.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.component.frontend.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.component.frontend.service.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 10
+          resources:
+            requests:
+              cpu: {{ .Values.component.frontend.resources.requests.cpu | quote }}
+              memory: {{ .Values.component.frontend.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.component.frontend.resources.limits.cpu | quote }}
+              memory: {{ .Values.component.frontend.resources.limits.memory | quote }}  

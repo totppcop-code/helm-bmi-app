@@ -1,0 +1,19 @@
+{{- if .Values.component.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.prometheusRule) }}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.prometheusRule) | nindent 4 }}
+spec:
+  groups:
+    - name: cpu-rule
+      rules:
+        - alert: {{ .Values.component.prometheusRule.alert | quote }}
+          expr: {{ .Values.component.prometheusRule.expr | quote }}
+          for:  {{ .Values.component.prometheusRule.for | quote }}
+          labels:
+            {{- toYaml .Values.component.prometheusRule.labels | nindent 12}}
+          annotations:
+            {{- toYaml .Values.component.prometheusRule.annotations | nindent 12 }}
+{{- end }}            

@@ -1,0 +1,45 @@
+{{- if .Values.component.rbacEnabled }}
+{{- range $name, $comp := .Values.component.rbac }}
+{{- if $comp.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "component.fullname" (dict "Release" $.Release "Values" $comp ) }}
+  labels:
+    {{ include "component.labels" (dict "Release" $.Release "Values" $comp ) | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+{{- if eq $name "prometheus"}}
+kind: ClusterRole
+{{- else }}
+kind: Role
+{{- end }}
+metadata:
+  name: {{ include "component.fullname" (dict "Release" $.Release "Values" $comp ) }}
+  labels:
+    {{ include "component.labels" (dict "Release" $.Release "Values" $comp ) | nindent 4 }}
+rules:
+  {{- toYaml $comp.rules | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+{{- if eq $name "prometheus"}}
+kind: ClusterRoleBinding
+{{- else }}
+kind: RoleBinding
+{{- end }}
+metadata:
+  name: {{ include "component.fullname" (dict "Release" $.Release "Values" $comp ) }}
+  labels:
+    {{ include "component.labels" (dict "Release" $.Release "Values" $comp ) | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "component.fullname" (dict "Release" $.Release "Values" $comp ) }}
+    namespace: {{ $.Release.Namespace }}
+roleRef:
+  kind: {{ if eq $name "prometheus" }}ClusterRole{{ else }}Role{{ end }}
+  name: {{ include "component.fullname" (dict "Release" $.Release "Values" $comp ) }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+{{- end }}
+{{- end }}

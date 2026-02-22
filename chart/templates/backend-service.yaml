@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.backend) }}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.backend) | nindent 4 }}
+spec:
+  type: {{ .Values.component.backend.service.type }}
+  selector:
+    {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.backend) | nindent 4}}
+  ports:
+    - name: http
+      port: {{ .Values.component.backend.service.port }}
+      targetPort: {{ .Values.component.backend.service.port }}

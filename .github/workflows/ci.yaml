@@ -1,49 +1,119 @@
 name: CI/CD Pipeline
 on:
   push:
-    branches: ["master"]
+      branches: ["master"]
 jobs:
-  build-and-deploy:
+  deploy-and-build:
     runs-on: self-hosted
-
     steps:
-      - name: Checkout
+      - name: checkout
         uses: actions/checkout@v4
       
-      - name: Kind create cluster
+      - name: Create cluster
         run: |
+          if ! kind get clusters | grep -q "bmi-cluster";then
+          echo "未偵測到叢集 建立新環境"
           kind create cluster --name bmi-cluster --config kind-config.yaml
+          else
+          echo "偵測到叢集 準備執行滾動更新"
+          fi
 
       - name: Install ingress-nginx
         run: |
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-      
-      - name: Check pod
-        run: |
-          kubectl get pods -n ingress-nginx
+          kubectl wait --namespace ingress-nginx \
+          --for=condition=ready pod \
+          --selector=app.kubernetes.io/name=ingress-nginx \
+          --timeout=300s || echo "pod 尚未 ready 跳過 錯誤"
       
       - name: Build image
         run: |
-          docker build -t bmi-app-backend:latest ./backend
-          docker build -t bmi-app-frontend:latest ./frontend
-      
+              docker build \
+              --cache-from bmi-app-backend:latest \
+              -t bmi-app-backend:${{ github.sha }} \
+              -t bmi-app-backend:latest ./backend
+              docker build \
+              --cache-from bmi-app-frontend:latest \
+              -t bmi-app-frontend:${{ github.sha }} \
+              -t bmi-app-frontend:latest ./frontend
+          
       - name: Load image
         run: |
-          kind load docker-image bmi-app-backend:latest --name bmi-cluster
-          kind load docker-image bmi-app-frontend:latest --name bmi-cluster
+          kind load docker-image bmi-app-backend:${{ github.sha }} --name bmi-cluster
+          kind load docker-image bmi-app-frontend:${{ github.sha }} --name bmi-cluster
 
-      - name: Apply k8s
+      - name: Install  kube-prometheus-stack  crds   
         run: |
-          kubectl apply -f k8s/
+          if  kubectl get crds | grep -q cert-manager; then
+              echo "ever install crds"
+          else   
+              kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.crds.yaml
+              helm repo add jetstack https://charts.jetstack.io
+              helm repo update
+              helm install cert-manager jetstack/cert-manager \
+              --namespace cert-manager \
+              --create-namespace \
+              --version v1.14.4
+          fi
+      
+      - name: install prometheus-stack
+        run: |
+          if  helm list -n monitoring | grep -q kube-prometheus-stack ; then
+              echo "ever install kube-prometheus-stack"
+          else
+              helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+              helm repo update
+              helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+              --namespace monitoring \
+              --create-namespace
+          fi
 
-      - name: wait for postgres
+      - name: Install sealedsecret
         run: |
-          kubectl wait --for=condition=Ready pod -l app=postgres --timeout=120s
+          set -euo pipefail
+          
+          if ! kubectl get deployment sealed-secrets-controller -n kube-system >/dev/null 2>&1; then
+              kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.27.0/controller.yaml 
+          fi
+              kubectl rollout status deployment/sealed-secrets-controller -n kube-system --timeout=5m
+              
+              
 
-      - name: wait for backend
+              kubectl create namespace bmi-app --dry-run=client -o yaml | kubectl apply -f -
+              
+
+      - name: test sealedsecret.yaml
         run: |
-          kubectl rollout status deploy/backend-deployment --timeout=120s
+          if test -f chart/templates/sealedsecret.yaml; then 
+             echo "generate success"
+          else
+             echo "not generate sealedsecret.yaml"
+             exit 1
+          fi   
+
+      - name: Helm deploy
+        run: |
+          helm upgrade --install bmi-app ./chart --timeout 600s \
+          --set component.backend.image.tag=${{ github.sha }} \
+          --set component.frontend.image.tag=${{ github.sha }} \
+          --namespace default \
+          
+      
+      - name: wait for ready
+        run: |
+          echo "等待前端服務就緒.."
+          kubectl rollout status deployment/bmi-app-frontend --timeout=90s
+          echo "等待後端服務就緒.."
+          kubectl rollout status deployment/bmi-app-backend --timeout=90s
 
       - name: Migrate
         run: |
-          kubectl exec $(kubectl get pod -l app=backend -o jsonpath='{.items[0].metadata.name}') -c backend -- python manage.py migrate
+          kubectl delete job migrate --ignore-not-found
+          kubectl apply -f chart/templates/migrate.yaml
+          kubectl wait --for=condition=complete job migrate --timeout=180s
+            
+      - name: cleaned
+        run: |
+          docker system prune -f
+      
+      

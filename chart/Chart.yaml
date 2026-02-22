@@ -1,0 +1,18 @@
+apiVersion: v2
+name: chart
+description:  A Helm Chart for kubermetes demo app
+version: 0.1.0
+appVersion: '1.0.0'
+
+maintainers:
+  - name: 'yo'
+    email: "yo@gmail.com"
+sources:
+  - http://github.com/totppcop-code/bmi-app.git
+home: http://bmi-app.example.com
+icon: http://bmi-app.example.com/icon.png
+
+keywords:
+  - kubernetes
+  - bmi
+

@@ -1,0 +1,39 @@
+{{- if .Values.component.grafana.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.grafana) }}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.grafana) | nindent 4 }}
+spec:
+  replicas: {{ .Values.component.grafana.replicaCount }}
+  selector:
+    matchLabels:
+      {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.grafana) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.grafana) | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.grafana)}}
+          image: "{{ .Values.component.grafana.image.repository }}:{{ .Values.component.grafana.image.tag }}"
+          imagePullPolicy: {{ .Values.component.grafana.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.component.grafana.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.grafana) }}
+  labels:
+    {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.grafana) | nindent 4 }}
+spec:
+  type: {{ .Values.component.grafana.service.type }}
+  selector:
+    {{ include "component.selectorLabels" (dict "Release" .Release "Values" .Values.component.grafana) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.component.grafana.service.port }} 
+      targetPort: {{ .Values.component.grafana.service.port }}
+{{- end }}
