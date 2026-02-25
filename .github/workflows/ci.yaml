@@ -102,9 +102,9 @@ jobs:
       - name: wait for ready
         run: |
           echo "等待前端服務就緒.."
-          kubectl rollout status deployment/bmi-app-frontend --timeout=90s
+          kubectl rollout status deployment/bmi-app-frontend --timeout=120s
           echo "等待後端服務就緒.."
-          kubectl rollout status deployment/bmi-app-backend --timeout=90s
+          kubectl rollout status deployment/bmi-app-backend --timeout=120s
 
       - name: Migrate
         run: |
