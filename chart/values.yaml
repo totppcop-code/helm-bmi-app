@@ -39,7 +39,7 @@ component:
     serviceMonitor:
       enabled: true
 
-  ingressEnable: true
+  ingressEnabled: true
   ingress:
     name: ingress
     tls:
