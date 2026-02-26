@@ -2,6 +2,9 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: migrate
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 spec:
   backoffLimit: 5
   ttlSecondsAfterFinished: 200
@@ -10,7 +13,7 @@ spec:
       containers:
         - name: migrate
           image: "{{ .Values.component.backend.image.repository }}:{{ .Values.component.backend.image.tag }}"
-          imagePullPolicy: {{ .Values.component.backend.image.pullPolicy | default "IFNotPresent"}}
+          imagePullPolicy: {{ .Values.component.backend.image.pullPolicy }}
           command: ["python", "manage.py", "migrate"]
           envFrom:
             - secretRef:

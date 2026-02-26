@@ -106,11 +106,6 @@ jobs:
           echo "等待後端服務就緒.."
           kubectl rollout status deployment/bmi-app-backend --timeout=90s
 
-      - name: Migrate
-        run: |
-          kubectl delete job migrate --ignore-not-found
-          kubectl apply -f chart/templates/migrate.yaml
-          kubectl wait --for=condition=complete job migrate --timeout=180s
             
       - name: cleaned
         run: |
