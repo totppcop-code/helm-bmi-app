@@ -11,7 +11,7 @@ spec:
       containers:
         - name: migrate
           image: "{{ .Values.component.backend.image.repository }}:{{ .Values.component.backend.image.tag }}"
-          imagePullPolicy: {{ .Values.component.backend.image.pullPolicy }}
+          imagePullPolicy: "{{ .Values.component.backend.image.pullPolicy }}"
           command: ["python", "manage.py", "migrate"]
           envFrom:
             - secretRef:
