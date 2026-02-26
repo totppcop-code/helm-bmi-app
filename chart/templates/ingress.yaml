@@ -5,14 +5,14 @@ metadata:
   name: {{ include "component.fullname" (dict "Release" .Release "Values" .Values.component.ingress) }}
   labels:
     {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.ingress) | nindent 4 }}
-  #annotations:
-  #  cert-manager.io/clusterIssuer: letsencrypt-prod
+  annotations:
+    cert-manager.io/clusterIssuer: letsencrypt-prod
 spec:
   ingressClassName: nginx
-  #tls:
-  #  - hosts:
-  #     - {{ .Values.component.ingress.tls.hosts }}
-  #    secretName: {{ .Values.component.ingress.tls.secretName }}
+  tls:
+    - hosts:
+        - {{ .Values.component.ingress.tls.hosts }}
+      secretName: {{ .Values.component.ingress.tls.secretName }}
   rules:
     - host: "{{ .Values.component.ingress.rules.host }}"
       http:

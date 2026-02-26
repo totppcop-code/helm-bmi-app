@@ -42,12 +42,11 @@ component:
   ingressEnabled: true
   ingress:
     name: ingress
-    #tls:
-    #- hosts: 
-    #    - bmi.local
-    #  secretName: bmi-local-tls-secret
+    tls:
+      hosts: bmi.local
+      secretName: bmi-local-tls-secret
     rules:
-    - host: bmi.local
+      host: bmi.local
     
    
 
