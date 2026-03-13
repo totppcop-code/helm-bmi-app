@@ -7,6 +7,7 @@ metadata:
     {{ include "component.labels" (dict "Release" .Release "Values" .Values.component.ingress) | nindent 4 }}
   annotations:
     cert-manager.io/clusterIssuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
   tls:

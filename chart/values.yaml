@@ -151,9 +151,13 @@ component:
       name: frontend
       ingress:
       - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
         - podSelector:
             matchLabels:
-              app: ingress
+              app.kubernetes.io/name: ingress-nginx
+              app.kubernetes.io/component: controller
         ports:
         - protocol: TCP
           port: 80
