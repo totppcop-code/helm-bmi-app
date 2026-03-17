@@ -134,7 +134,7 @@ component:
       - from:
         - podSelector:
             matchLabels:
-              app: frontend
+              app.kubernetes.io/name: frontend
         ports:
         - protocol: TCP
           port: 8000
@@ -142,7 +142,7 @@ component:
       - to:
         - podSelector:
             matchLabels:
-              app: postgres
+              app.kubernetes.io/name: postgres
         ports:
         - protocol: TCP
           port: 5432
@@ -154,7 +154,7 @@ component:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
-        - podSelector:
+          podSelector:
             matchLabels:
               app.kubernetes.io/name: ingress-nginx
               app.kubernetes.io/component: controller
@@ -165,7 +165,7 @@ component:
       - to:
         - podSelector:
             matchLabels:
-              app: backend
+              app.kubernetes.io/name: backend
         ports:
         - protocol: TCP
           port: 8000
@@ -183,14 +183,14 @@ component:
       - to:
         - podSelector:
             matchLabels:
-              app: backend
+              app.kubernetes.io/name: backend
         ports:
         - protocol: TCP
           port: 8000
       - to:
         - podSelector:
             matchLabels:
-              app: frontend
+              app.kubernetes.io/name: frontend
         ports:
         - protocol: TCP
           port: 80
@@ -201,7 +201,7 @@ component:
       - from:
         - podSelector:
             matchLabels:
-              app: backend
+              app.kubernetes.io/name: backend
         ports:
         - protocol: TCP
           port: 5432
@@ -212,7 +212,7 @@ component:
       - from:
         - podSelector:
             matchLabels:
-              app: grafana
+              app.kubernetes.io/name: grafana
         ports:
         - protocol: TCP
           port: 9090
@@ -220,10 +220,10 @@ component:
       - to:
         - podSelector:
             matchLabels:
-              app: backend
+              app.kubernetes.io/name: backend
         - podSelector:
             matchLabels:
-              app: frontend
+              app.kubernetes.io/name: frontend
         ports:
         - protocol: TCP
           port: 8000
@@ -236,7 +236,7 @@ component:
       - to:
         - podSelector:
             matchLabels:
-              app: prometheus
+              app.kubernetes.io/name: prometheus
         ports:
         - protocol: TCP
           port: 9090
@@ -247,7 +247,7 @@ component:
       - from:
         - podSelector:
             matchLabels:
-              app: prometheus
+              app.kubernetes.io/name: prometheus
         ports:
         - protocol: TCP
           port: 9093
